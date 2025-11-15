@@ -5,14 +5,6 @@ import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFCo
 import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
 
 /**
- *  Custom Errors
- */
-
-error Raffle__NotEnoughEthSent();
-error Raffle__TransferFailed();
-error Raffle__RaffleIsNotOpen();
-error Raffle__UpKeepNotNeeded(uint256 balance, uint256 playersLength, uint256 raffleStatus);
-/**
  * @title Raffle Contract
  * @author Ebin Yesudas
  * @notice This contract is for creating Lotteries.
@@ -20,6 +12,14 @@ error Raffle__UpKeepNotNeeded(uint256 balance, uint256 playersLength, uint256 ra
  */
 
 contract Raffle is VRFConsumerBaseV2Plus {
+    /**
+     *  Custom Errors
+     */
+    error Raffle__NotEnoughEthSent();
+    error Raffle__TransferFailed();
+    error Raffle__RaffleIsNotOpen();
+    error Raffle__UpKeepNotNeeded(uint256 balance, uint256 playersLength, uint256 raffleStatus);
+
     /**
      * Type Declarations
      */
@@ -164,11 +164,11 @@ contract Raffle is VRFConsumerBaseV2Plus {
         return s_players[index];
     }
 
-    function getRaffleStatus() external view returns(RaffleStatus){
+    function getRaffleStatus() external view returns (RaffleStatus) {
         return s_raffleStatus;
     }
 
-    function getRecentWinner() external view returns(address){
+    function getRecentWinner() external view returns (address) {
         return s_recentWinner;
     }
 }
