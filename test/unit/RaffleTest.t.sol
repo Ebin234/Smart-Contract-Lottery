@@ -5,6 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {DeployRaffle} from "script/DeployRaffle.s.sol";
 import {Raffle} from "src/Raffle.sol";
 import {HelperConfig} from "script/HelperConfig.s.sol";
+import {LinkToken} from "../mocks/LinkToken.sol";
 
 contract RaffleTest is Test {
     Raffle public raffle;
@@ -16,6 +17,7 @@ contract RaffleTest is Test {
     bytes32 gasLane;
     uint256 subscriptionId;
     uint32 callbackGasLimit;
+    LinkToken linkToken;
 
     address public PLAYER = makeAddr("user");
     uint256 public constant STARTING_PLAYER_BALANCE = 10 ether;
@@ -33,7 +35,7 @@ contract RaffleTest is Test {
         gasLane = config.gasLane;
         subscriptionId = config.subscriptionId;
         callbackGasLimit = config.callbackGasLimit;
-
+        linkToken = LinkToken(config.linkToken);
         vm.deal(PLAYER, STARTING_PLAYER_BALANCE);
     }
 
@@ -69,17 +71,17 @@ contract RaffleTest is Test {
         raffle.enterRaffle{value: entranceFee}();
     }
 
-    // function testDontAllowPlayersToEnterWhileRaffleIsCalculating() public {
-    //     //Arrange
-    //     vm.prank(PLAYER);
-    //     raffle.enterRaffle{value: entranceFee}();
-    //     vm.warp(block.timestamp + interval + 1);
-    //     vm.roll(block.number + 1);
-    //     raffle.performUpkeep("");
+    function testDontAllowPlayersToEnterWhileRaffleIsCalculating() public {
+        //Arrange
+        vm.prank(PLAYER);
+        raffle.enterRaffle{value: entranceFee}();
+        vm.warp(block.timestamp + interval + 1);
+        vm.roll(block.number + 1);
+        raffle.performUpkeep("");
 
-    //     //Act
-    //     vm.expectRevert(Raffle.Raffle__RaffleIsNotOpen.selector);
-    //     vm.prank(PLAYER);
-    //     raffle.enterRaffle{value: entranceFee}();
-    // }
+        //Act
+        vm.expectRevert(Raffle.Raffle__RaffleIsNotOpen.selector);
+        vm.prank(PLAYER);
+        raffle.enterRaffle{value: entranceFee}();
+    }
 }
