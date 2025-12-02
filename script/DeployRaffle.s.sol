@@ -9,7 +9,9 @@ import {CreateSubscription, FundSubscription, AddConsumer} from "./Interactions.
 // import {LinkToken} from "test/mocks/LinkToken.sol"
 
 contract DeployRaffle is Script {
-    function run() public {}
+    function run() public {
+        deployRaffle();
+    }
 
     function deployRaffle() public returns (Raffle, HelperConfig) {
         HelperConfig helperConfig = new HelperConfig();
