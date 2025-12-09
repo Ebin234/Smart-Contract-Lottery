@@ -6,6 +6,7 @@ import {DeployRaffle} from "script/DeployRaffle.s.sol";
 import {Raffle} from "src/Raffle.sol";
 import {HelperConfig} from "script/HelperConfig.s.sol";
 import {LinkToken} from "../mocks/LinkToken.sol";
+import {Vm} from "forge-std/Vm.sol";
 
 contract RaffleTest is Test {
     Raffle public raffle;
@@ -24,6 +25,14 @@ contract RaffleTest is Test {
 
     event RaffleEntered(address indexed player);
     event WinnerPicked(address indexed winner);
+
+    modifier RaffleEnteredAndTimePassed() {
+        vm.prank(PLAYER);
+        raffle.enterRaffle{value: entranceFee}();
+        vm.warp(block.timestamp + interval + 1);
+        vm.roll(block.number + 1);
+        _;
+    }
 
     function setUp() external {
         DeployRaffle deployer = new DeployRaffle();
@@ -85,7 +94,11 @@ contract RaffleTest is Test {
         raffle.enterRaffle{value: entranceFee}();
     }
 
-    function testUpkeepReturnsFalseIfItHasNoBalance() public {
+    /*//////////////////////////////////////////////////////////////
+                              CHECKUPKEEP
+    //////////////////////////////////////////////////////////////*/
+
+    function testCheckUpkeepReturnsFalseIfItHasNoBalance() public {
         vm.warp(block.timestamp + interval + 1);
         vm.roll(block.number + 1);
 
@@ -94,7 +107,7 @@ contract RaffleTest is Test {
         assert(!upKeepNeeded);
     }
 
-    function testUpkeepReturnsFalseIfRaffleIsntOpen() public {
+    function testCheckUpkeepReturnsFalseIfRaffleIsntOpen() public {
         vm.prank(PLAYER);
         raffle.enterRaffle{value: entranceFee}();
         vm.warp(block.timestamp + interval + 1);
@@ -102,9 +115,80 @@ contract RaffleTest is Test {
         raffle.performUpkeep("");
         Raffle.RaffleStatus raffleStatus = raffle.getRaffleStatus();
 
-        (bool upKeepNeeded,) = raffle.checkUpkeep("");
+        (bool upKeepNeeded, ) = raffle.checkUpkeep("");
 
         assert(raffleStatus == Raffle.RaffleStatus.CALCULATING);
         assert(upKeepNeeded == false);
+    }
+
+    function testCheckUpKeepReturnsFalseIfEnoughTimeHasntPassed() public {
+        vm.prank(PLAYER);
+        raffle.enterRaffle{value: entranceFee}();
+
+        (bool upKeepNeeded, ) = raffle.checkUpkeep("");
+
+        assert(!upKeepNeeded);
+    }
+
+    function testCheckUpKeepReturnTrueWhenParametersGood() public {
+        vm.prank(PLAYER);
+        raffle.enterRaffle{value: entranceFee}();
+        vm.warp(block.timestamp + interval + 1);
+        vm.roll(block.number + 1);
+
+        (bool upKeepNeeded, ) = raffle.checkUpkeep("");
+
+        assert(upKeepNeeded);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             PERFORMUPKEEP
+    //////////////////////////////////////////////////////////////*/
+
+    function testPerformUpKeepCanOnlyRunIfCheckUpKeepIsTrue() public {
+        // Arrange
+        vm.prank(PLAYER);
+        raffle.enterRaffle{value: entranceFee}();
+        vm.warp(block.timestamp + interval + 1);
+        vm.roll(block.number + 1);
+
+        // Act / Assert
+        raffle.performUpkeep("");
+    }
+
+    function testPerformUpkeepRevertsIfCheckUpKeepIsFalse() public {
+        // Arrange
+        uint256 currentBalance = 0;
+        uint256 numPlayers = 0;
+        Raffle.RaffleStatus rStatus = raffle.getRaffleStatus();
+        vm.prank(PLAYER);
+        raffle.enterRaffle{value: entranceFee}();
+        currentBalance = currentBalance + entranceFee;
+        numPlayers = numPlayers + 1;
+
+        // Act / Assert
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Raffle.Raffle__UpKeepNotNeeded.selector,
+                currentBalance,
+                numPlayers,
+                rStatus
+            )
+        );
+        raffle.performUpkeep("");
+    }
+
+    function testPerformUpKeepUpdatesRaffleStateAndEmitsRequestId()
+        public
+        RaffleEnteredAndTimePassed
+    {
+        vm.recordLogs();
+        raffle.performUpkeep("");
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bytes32 requestId = entries[1].topics[1];
+
+        Raffle.RaffleStatus raffleStatus = raffle.getRaffleStatus();
+        assert(uint256(requestId) > 0);
+        assert(uint256(raffleStatus) == 1);
     }
 }
